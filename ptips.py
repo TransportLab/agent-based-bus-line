@@ -34,7 +34,7 @@ scheduled_velocity = 0.5*speed_limit # how fast the busses are scheduled to move
 traffic_light_period = 60 # (s)
 traffic_light_green_fraction = 0.5 # fraction of time it is _green_
 bus_waiting_time = 10 # how long a bus waits at a stop (s)
-
+ptips_delay_time = 10 # how much delay before PTIPS kicks in (s)
 # Vehicle interaction properties
 stiffness = 1e4 # how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
 sigma = 10 # typical stopping distance (m)
@@ -75,7 +75,10 @@ while t < t_max:
             for i in range(num_vehicles):
                 if distance_to_light[i] < 3*sigma and distance_to_light[i] > 0 and velocity[i] > 0:
                     # print(i,position[i],distance_to_light[i])
-                    acceleration[i] -= stiffness*gaussian(distance_to_light[i],sigma)
+                    if i in b and delay[b] > ptips_delay_time:
+                        pass
+                    else:
+                        acceleration[i] -= stiffness*gaussian(distance_to_light[i],sigma)
 
     # Check bus stops
     for b in bus:
@@ -104,7 +107,7 @@ while t < t_max:
     traffic_light_theta = traffic_lights/L*2*np.pi
     bus_stop_theta = bus_stops/L*2*np.pi
 
-    delay = position[bus] - scheduled_velocity*t
+    delay = position - scheduled_velocity*t
 
     if tstep%100 == 0:
         plt.ion()
