@@ -1,0 +1,5 @@
+numpy
+matplotlib
+black
+flake8
+progressbar2

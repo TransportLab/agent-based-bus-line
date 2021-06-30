@@ -32,9 +32,6 @@ def time_march(p, verbose, GRAPH):
     bus_stop_locations = traffic_lights.copy() + (traffic_lights[1] - traffic_lights[0]) / 2.0
     bus_stop_queue = np.zeros_like(bus_stop_locations)  # no passengers anywhere
     bus = np.random.choice(num_vehicles, int(p.bus_fraction * num_vehicles), replace=False)
-    wait_time = -1 * np.ones_like(
-        position
-    )  # how long the bus has been waiting at the stop, negative values indicates the last stop number
     car = np.delete(range(num_vehicles), bus)
     bus_fullness = np.zeros(
         [len(bus), len(bus_stop_locations)]
@@ -126,7 +123,7 @@ def time_march(p, verbose, GRAPH):
         traffic_light_theta = traffic_lights / p.L * 2 * np.pi
         bus_stop_theta = bus_stop_locations / p.L * 2 * np.pi
 
-        delay = p.scheduled_velocity * t - total_displacement
+        # delay = p.scheduled_velocity * t - total_displacement
 
         if verbose:
             print(bus_motion)
@@ -202,9 +199,10 @@ verbose = False
 GRAPH = True
 # GRAPH = False
 
-# The road is a single round loop of radius R
+
 class params:
     def __init__(self):
+        # The road is a single round loop of radius R
         self.L = 1000  # circumference of circle (m)
         # Time marching
         self.t_max = 1e4  # maximum time (s)
@@ -228,7 +226,8 @@ class params:
         # PTIPS stuff
         self.scheduled_velocity = 0.6 * self.speed_limit  # how fast the busses are scheduled to move (m/s)
         self.ptips_delay_time = 10  # how much delay before PTIPS kicks in (s)
-        self.ptips_capacity_threshold = 0.8 # how full should the busses be before ptips kicks in (-)
+        self.ptips_capacity_threshold = 0.8  # how full should the busses be before ptips kicks in (-)
+
 
 p = params()
 # vehicle_spacings = np.logspace(1.2,3,21)
@@ -236,10 +235,10 @@ p = params()
 # for initial_vehicle_spacing in vehicle_spacings:
 position, mean_velocity = time_march(p, verbose, GRAPH)
 
-flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
-
-plt.clf()
-plt.plot(vehicle_spacings ** -1 * 1000, flow_rate)
-plt.xlabel("Density (vehicles/km)")
-plt.ylabel("Flow rate (vehicles/hour)")
-plt.show()
+# flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
+#
+# plt.clf()
+# plt.plot(vehicle_spacings ** -1 * 1000, flow_rate)
+# plt.xlabel("Density (vehicles/km)")
+# plt.ylabel("Flow rate (vehicles/hour)")
+# plt.show()
