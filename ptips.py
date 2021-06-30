@@ -29,19 +29,17 @@ def time_march(p, verbose, GRAPH):
     velocity = np.zeros_like(position)
     traffic_lights = np.linspace(0, p.L, num_traffic_lights, endpoint=False)
     traffic_lights += traffic_lights[1]  # don't start at 0
-    bus_stop_locations = (
-        traffic_lights.copy() + (traffic_lights[1] - traffic_lights[0]) / 2.0
-    )
+    bus_stop_locations = traffic_lights.copy() + (traffic_lights[1] - traffic_lights[0]) / 2.0
     bus_stop_queue = np.zeros_like(bus_stop_locations)  # no passengers anywhere
-    bus = np.random.choice(
-        num_vehicles, int(p.bus_fraction * num_vehicles), replace=False
-    )
+    bus = np.random.choice(num_vehicles, int(p.bus_fraction * num_vehicles), replace=False)
     wait_time = -1 * np.ones_like(
         position
     )  # how long the bus has been waiting at the stop, negative values indicates the last stop number
     car = np.delete(range(num_vehicles), bus)
-    bus_fullness = np.zeros([len(bus),len(bus_stop_locations)]) # for each bus, a list of passengers by destination
-    bus_motion = np.zeros_like(bus,dtype=int) # 0=moving, 1=unloading, 2=loading
+    bus_fullness = np.zeros(
+        [len(bus), len(bus_stop_locations)]
+    )  # for each bus, a list of passengers by destination
+    bus_motion = np.zeros_like(bus, dtype=int)  # 0=moving, 1=unloading, 2=loading
 
     for tstep in progressbar(range(nt)):
         # Everyone loves to accelerate
@@ -58,10 +56,7 @@ def time_march(p, verbose, GRAPH):
         acceleration -= interaction
 
         # Check traffic lights
-        if (
-            t % p.traffic_light_period
-            < p.traffic_light_green_fraction * p.traffic_light_period
-        ):
+        if t % p.traffic_light_period < p.traffic_light_green_fraction * p.traffic_light_period:
             green = True
         else:
             green = False
@@ -70,13 +65,9 @@ def time_march(p, verbose, GRAPH):
             for light in traffic_lights:
                 distance_to_light = light - position
                 # distance_to_light[distance_to_light > L/2] = L - distance_to_light[distance_to_light > L/2] # account for periodicity
-                stopping_vehicles = (distance_to_light < 3 * p.sigma) * (
-                    distance_to_light > 0
-                )
+                stopping_vehicles = (distance_to_light < 3 * p.sigma) * (distance_to_light > 0)
                 acceleration[stopping_vehicles] -= (
-                    10
-                    * p.stiffness
-                    * gaussian(distance_to_light[stopping_vehicles], p.sigma)
+                    10 * p.stiffness * gaussian(distance_to_light[stopping_vehicles], p.sigma)
                 )
 
         # Update passengers at stops
@@ -87,42 +78,42 @@ def time_march(p, verbose, GRAPH):
             for j, b in enumerate(bus):
                 distance_to_stop = stop - position[b]
                 # if distance_to_stop > p.L / 2:
-                    # distance_to_stop = (
-                        # p.L - distance_to_stop
-                    # )  # account for periodicity - NOTE: THIS PROBABLY ISN'T WORKING
-                if (
-                    distance_to_stop < 3 * p.sigma and distance_to_stop > 0
-                ):
-                    if (bus_stop_queue[i] > 1 or bus_fullness[j,i]>1) and bus_motion[j] == 0: # bus is moving and hits a stop with at least one person or one person wants to get off
-                        bus_motion[j] = 1 # move to unloading phase
+                # distance_to_stop = (
+                # p.L - distance_to_stop
+                # )  # account for periodicity - NOTE: THIS PROBABLY ISN'T WORKING
+                if distance_to_stop < 3 * p.sigma and distance_to_stop > 0:
+                    if (bus_stop_queue[i] > 1 or bus_fullness[j, i] > 1) and bus_motion[
+                        j
+                    ] == 0:  # bus is moving and hits a stop with at least one person or one person wants to get off
+                        bus_motion[j] = 1  # move to unloading phase
                     if bus_motion[j] > 0:
-                        acceleration[b] -= p.stiffness * gaussian(
-                            distance_to_stop, p.sigma
-                        )
-                    if velocity[b] == 0.0: # only once the bus has stopped
-                        if bus_motion[j] == 1: # unloading
+                        acceleration[b] -= p.stiffness * gaussian(distance_to_stop, p.sigma)
+                    if velocity[b] == 0.0:  # only once the bus has stopped
+                        if bus_motion[j] == 1:  # unloading
                             # print(f'unloading {j} at stop {i}. Current fullness {bus_fullness[j,i]}')
-                            if bus_fullness[j,i] > 0: # if there are passengers on this bus who want to get off here
-                                 bus_fullness[j,i] -= (
-                                     p.passenger_ingress_egress_rate * p.dt
-                                 )  # passengers leave bus
+                            if (
+                                bus_fullness[j, i] > 0
+                            ):  # if there are passengers on this bus who want to get off here
+                                bus_fullness[j, i] -= (
+                                    p.passenger_ingress_egress_rate * p.dt
+                                )  # passengers leave bus
                             else:
                                 bus_motion[j] = 2
-                        elif bus_motion[j] == 2: # loading
+                        elif bus_motion[j] == 2:  # loading
                             # print(f'LOADING {j} at stop {i}. Current fullness {bus_fullness[j,i]}')
-                            if bus_stop_queue[i] > 0 and np.sum(bus_fullness[j,:]) <= p.bus_max_capacity:
-                                bus_fullness[j,:i] += (
-                                    p.passenger_ingress_egress_rate * p.dt / len(bus_stop_queue-1)
+                            if bus_stop_queue[i] > 0 and np.sum(bus_fullness[j, :]) <= p.bus_max_capacity:
+                                bus_fullness[j, :i] += (
+                                    p.passenger_ingress_egress_rate * p.dt / len(bus_stop_queue - 1)
                                 )  # passengers go onto bus
-                                bus_fullness[j,i+1:] += (
-                                    p.passenger_ingress_egress_rate * p.dt / len(bus_stop_queue-1)
+                                bus_fullness[j, i + 1 :] += (
+                                    p.passenger_ingress_egress_rate * p.dt / len(bus_stop_queue - 1)
                                 )  # passengers go onto bus
                                 bus_stop_queue[i] -= (
                                     p.passenger_ingress_egress_rate * p.dt
                                 )  # passengers leave stop
                             else:
-                                bus_motion[j] = 0 # start moving again
-            bus_fullness[bus_fullness<0] = 0 # HACK!!!
+                                bus_motion[j] = 0  # start moving again
+            bus_fullness[bus_fullness < 0] = 0  # HACK!!!
 
         # Update positions
         velocity += acceleration * p.dt
@@ -141,7 +132,7 @@ def time_march(p, verbose, GRAPH):
             print(bus_motion)
             print(bus_stop_queue)
             print(bus_fullness)
-            print('')
+            print("")
         if GRAPH:
             if tstep % 1e2 == 0:
                 plt.ion()
@@ -188,7 +179,7 @@ def time_march(p, verbose, GRAPH):
                 plt.scatter(
                     R * np.sin(theta[bus]),
                     R * np.cos(theta[bus]),
-                    3 + np.sum(bus_fullness,axis=1) * 10,
+                    3 + np.sum(bus_fullness, axis=1) * 10,
                     marker="o",
                     c="b",
                     label="Bus",
@@ -224,12 +215,8 @@ class params:
         self.free_flowing_acceleration = 3  # typical vehicle acceleration (m/s^2)
         # Bus system
         self.bus_fraction = 0.3
-        self.passenger_accumulation_rate = (
-            0.1  # how many passengers arrive at every stop every second (passengers/s)
-        )
-        self.passenger_ingress_egress_rate = (
-            10  # how long to get on/off the bus (passengers/s)
-        )
+        self.passenger_accumulation_rate = 0.1  # passengers arriving at a stop every second (passengers/s)
+        self.passenger_ingress_egress_rate = 10  # how long to get on/off the bus (passengers/s)
         self.bus_max_capacity = 10  # maximum number of passengers on an individual bus
         # bus_waiting_time = 10 # how long a bus waits at a stop (s)
         # Traffic light properties
@@ -240,9 +227,7 @@ class params:
         self.stiffness = 1e4  # how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
         self.sigma = 10  # typical stopping distance (m)
         # PTIPS stuff
-        self.scheduled_velocity = (
-            0.6 * self.speed_limit
-        )  # how fast the busses are scheduled to move (m/s)
+        self.scheduled_velocity = 0.6 * self.speed_limit  # how fast the busses are scheduled to move (m/s)
         self.ptips_delay_time = 10  # how much delay before PTIPS kicks in (s)
 
 
