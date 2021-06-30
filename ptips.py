@@ -218,7 +218,6 @@ class params:
         self.passenger_accumulation_rate = 0.1  # passengers arriving at a stop every second (passengers/s)
         self.passenger_ingress_egress_rate = 10  # how long to get on/off the bus (passengers/s)
         self.bus_max_capacity = 10  # maximum number of passengers on an individual bus
-        # bus_waiting_time = 10 # how long a bus waits at a stop (s)
         # Traffic light properties
         self.traffic_light_spacing = self.L / 4.0  # (m)
         self.traffic_light_period = 60  # (s)
@@ -229,7 +228,7 @@ class params:
         # PTIPS stuff
         self.scheduled_velocity = 0.6 * self.speed_limit  # how fast the busses are scheduled to move (m/s)
         self.ptips_delay_time = 10  # how much delay before PTIPS kicks in (s)
-
+        self.ptips_capacity_threshold = 0.8 # how full should the busses be before ptips kicks in (-)
 
 p = params()
 # vehicle_spacings = np.logspace(1.2,3,21)
