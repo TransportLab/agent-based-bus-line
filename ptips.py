@@ -4,10 +4,10 @@ Questions to ask of model:
 
 """
 
-from progressbar import progressbar
 import numpy as np
 import matplotlib.pyplot as plt
 from plotting import show_road_system
+from tqdm import tqdm
 
 
 def gaussian(d, sigma):
@@ -24,7 +24,6 @@ def time_march(p, verbose, GRAPH):
     num_traffic_lights = int(p.L // p.traffic_light_spacing)
 
     position = np.linspace(0, p.L, num_vehicles, endpoint=False)
-    # position += vehicle_spacing*np.random.rand(num_vehicles)
     total_displacement = np.zeros_like(position)
     velocity = np.zeros_like(position)
 
@@ -42,13 +41,20 @@ def time_march(p, verbose, GRAPH):
     )  # for each bus, a list of passengers by destination
     bus_motion = np.zeros_like(bus, dtype=int)  # 0=moving, 1=unloading, 2=loading
 
-    for tstep in progressbar(range(nt)):
+    vehicle_order = np.argsort(position)
+    vehicle_order_order = np.argsort(vehicle_order)
+
+    for tstep in tqdm(range(nt), leave=False):
         # Everyone loves to accelerate
         acceleration = p.free_flowing_acceleration - gamma * velocity ** 2
         # acceleration[0] = 0 # fix first car
 
         # Check car in front
-        relative_distance = np.roll(position, -1) - position
+        # relative_distance_old = np.roll(position, -1) - position
+        relative_distance = (position[np.roll(vehicle_order, -1)] - position[vehicle_order])[
+            vehicle_order_order
+        ]  # magic! never ask questions
+
         relative_distance[relative_distance < 0] = (
             p.L + relative_distance[relative_distance < 0]
         )  # account for periodicity
@@ -57,19 +63,41 @@ def time_march(p, verbose, GRAPH):
         acceleration -= interaction
 
         # Check traffic lights
-        # if t % p.traffic_light_period < p.traffic_light_green_fraction * p.traffic_light_period:
-        # green = True
-        # else:
-        # green = False
         green = (
             0.5 * (np.cos(2 * np.pi * t / p.traffic_light_period + traffic_light_phasing) + 1)
             < p.traffic_light_green_fraction
         )
 
         for i, light in enumerate(traffic_lights):
-            if not green[i]:
-                distance_to_light = light - position
-                distance_to_light[position > light] += p.L  # account for periodicity
+            distance_to_light = light - position
+            distance_to_light[position > light] += p.L  # account for periodicity
+            if green[i]:  # remove some cars as they go through
+                # print(distance_to_light)
+                in_intersection = np.nonzero(
+                    (distance_to_light > -100 * p.speed_limit * p.dt)
+                    * (distance_to_light < 100 * p.speed_limit * p.dt)
+                )[
+                    0
+                ]  # HACK: NOT SURE WHY I NEED FACTORS OF 100!!!!!!! meant to be within a timestep-ish of the intersection, could use actual velocity rather than speed limit but worried about queueing across intersections
+                for j in in_intersection:
+                    if j not in bus:  # just cars
+                        if np.random.rand() < p.car_entry_exit_probability * p.dt:
+                            # print(f'all red lights: {np.nonzero(~green)}')
+                            choices = np.nonzero(~green)[0]
+                            if len(choices) == 1:
+                                red_light = choices[0]
+                            else:
+                                red_light = np.random.choice(choices, 1)[0]
+
+                            position[j] = (
+                                red_light + np.random.rand() * p.sigma
+                            )  # move the car to another red light
+                            velocity[j] = 0
+                            # now updated order of vehicles so collisions still work
+                            vehicle_order = np.argsort(position)
+                            vehicle_order_order = np.argsort(vehicle_order)
+
+            else:  # cars stop at red lights
                 stopping_vehicles = (distance_to_light < 3 * p.sigma) * (distance_to_light > 0)
                 acceleration[stopping_vehicles] -= (
                     10 * p.stiffness * gaussian(distance_to_light[stopping_vehicles], p.sigma)
@@ -157,16 +185,14 @@ def time_march(p, verbose, GRAPH):
     mean_velocity = np.mean(total_displacement / t)
     return position, mean_velocity
 
-    # print(f'Optimal scheduling velocity is: {np.mean(total_displacement/t)}')
-
 
 class params:
     def __init__(self):
         # The road is a single round loop of radius R
-        self.L = 1000  # circumference of circle (m)
+        self.L = 2000  # circumference of circle (m)
         # Time marching
         self.t_max = 1e3  # maximum time (s)
-        self.dt = 1e-2  # time increment (s)
+        self.dt = 1e-1  # time increment (s)
         # Traffic properties
         self.initial_vehicle_spacing = 100  # (m/vehicle)
         self.speed_limit = 60 / 3.6  # maximum velocity (m/s)
@@ -181,7 +207,7 @@ class params:
         self.traffic_light_spacing = self.L / 4.0  # (m)
         self.traffic_light_period = 60  # (s)
         self.traffic_light_green_fraction = 0.5  # fraction of time it is _green_ (-)
-        self.car_entry_exit_rate = 0.5  #
+        self.car_entry_exit_probability = 0.5  # probability of moving to a different traffic light
         # Vehicle interaction properties
         self.stiffness = 1e4  # how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
         self.sigma = 10  # typical stopping distance (m)
@@ -192,23 +218,25 @@ class params:
 
 
 # single case
-p = params()
-position, mean_velocity = time_march(p, verbose=False, GRAPH=True)
+# p = params()
+# position, mean_velocity = time_march(p, verbose=False, GRAPH=True)
 
 # parameter study
-# p = params()
-# vehicle_spacings = np.logspace(1.2, 3, 21)
-# vel = []
-# for i in vehicle_spacings:
-#     p.bus_fraction = 0
-#     p.initial_vehicle_spacing = i
-#     position, mean_velocity = time_march(p, False, False)
-#     vel.append(mean_velocity)
-#
-# flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
-#
-# plt.clf()
-# plt.plot(vehicle_spacings ** -1 * 1000, flow_rate)
-# plt.xlabel("Density (vehicles/km)")
-# plt.ylabel("Flow rate (vehicles/hour)")
-# plt.show()
+p = params()
+vehicle_spacings = np.logspace(1.2, 3, 21)
+car_entry_exit_probability = np.logspace(-3, -1, 5)
+
+for i in tqdm(car_entry_exit_probability):
+    vel = []
+    for j in vehicle_spacings:
+        p.car_entry_exit_probability = i
+        p.initial_vehicle_spacing = j
+        position, mean_velocity = time_march(p, False, False)
+        vel.append(mean_velocity)
+    flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
+    plt.plot(vehicle_spacings ** -1 * 1000, flow_rate, label=f"bus fraction {i}")
+
+plt.xlabel("Density (vehicles/km)")
+plt.ylabel("Flow rate (vehicles/hour)")
+plt.legend(loc=0)
+plt.savefig(f"fundamental_diagram_{p.car_entry_exit_probability}.png")

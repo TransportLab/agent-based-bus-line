@@ -43,8 +43,8 @@ def show_road_system(
         R * np.cos(bus_stop_theta),
         np.square(bus_stop_queue),
         marker="o",
-        facecolors="none",
-        edgecolors="b",
+        facecolors="royalblue",
+        edgecolors="none",
         label="Bus stop",
     )
     plt.plot(
