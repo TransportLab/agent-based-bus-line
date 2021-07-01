@@ -20,26 +20,24 @@ def show_road_system(
         "k--",
         label="Road",
     )
-    if green:
-        plt.plot(
-            R * np.sin(traffic_light_theta),
-            R * np.cos(traffic_light_theta),
-            "o",
-            mec="g",
-            mfc="None",
-            markersize=10,
-            label="Traffic light",
-        )
-    else:
-        plt.plot(
-            R * np.sin(traffic_light_theta),
-            R * np.cos(traffic_light_theta),
-            "o",
-            mec="r",
-            mfc="None",
-            markersize=10,
-            label="Traffic light",
-        )
+    plt.plot(
+        R * np.sin(traffic_light_theta[green]),
+        R * np.cos(traffic_light_theta[green]),
+        "o",
+        mec="g",
+        mfc="None",
+        markersize=10,
+        label="Traffic light",
+    )
+    plt.plot(
+        R * np.sin(traffic_light_theta[~green]),
+        R * np.cos(traffic_light_theta[~green]),
+        "o",
+        mec="r",
+        mfc="None",
+        markersize=10,
+        label="Traffic light",
+    )
     plt.scatter(
         R * np.sin(bus_stop_theta),
         R * np.cos(bus_stop_theta),
