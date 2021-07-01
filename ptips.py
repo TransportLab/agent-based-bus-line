@@ -7,6 +7,7 @@ Questions to ask of model:
 from progressbar import progressbar
 import numpy as np
 import matplotlib.pyplot as plt
+from plotting import show_road_system
 
 
 def gaussian(d, sigma):
@@ -19,7 +20,6 @@ def time_march(p, verbose, GRAPH):
     tstep = 0  # time step (-)
     nt = int(p.t_max // p.dt)
     gamma = p.free_flowing_acceleration / (p.speed_limit ** 2)  # drag coefficient
-    R = p.L / (2 * np.pi)  # circumference (m)
     num_vehicles = int(p.L // p.initial_vehicle_spacing)
     num_traffic_lights = int(p.L // p.traffic_light_spacing)
 
@@ -28,7 +28,9 @@ def time_march(p, verbose, GRAPH):
     total_displacement = np.zeros_like(position)
     velocity = np.zeros_like(position)
     traffic_lights = np.linspace(0, p.L, num_traffic_lights, endpoint=False)
-    bus_stop_locations = traffic_lights.copy() + (traffic_lights[1] - traffic_lights[0]) / 2.0
+    bus_stop_locations = traffic_lights.copy() + p.bus_stop_traffic_light_offset * (
+        traffic_lights[1] - traffic_lights[0]
+    )
     bus_stop_queue = np.zeros_like(bus_stop_locations)  # no passengers anywhere
     bus = np.random.choice(num_vehicles, int(p.bus_fraction * num_vehicles), replace=False)
     car = np.delete(range(num_vehicles), bus)
@@ -131,75 +133,18 @@ def time_march(p, verbose, GRAPH):
             print("")
         if GRAPH:
             if tstep % 1e2 == 0:
-                theta = position / p.L * 2 * np.pi
-                traffic_light_theta = traffic_lights / p.L * 2 * np.pi
-                bus_stop_theta = bus_stop_locations / p.L * 2 * np.pi
-                bus_stop_scaling = 5
-
-                plt.ion()
-                plt.clf()
-                plt.suptitle(t)
-                plt.plot(
-                    R * np.sin(np.linspace(0, 2 * np.pi, 101)),
-                    R * np.cos(np.linspace(0, 2 * np.pi, 101)),
-                    "k--",
-                    label="Road",
+                show_road_system(
+                    p,
+                    t,
+                    green,
+                    car,
+                    bus,
+                    position,
+                    traffic_lights,
+                    bus_stop_locations,
+                    bus_stop_queue,
+                    bus_fullness,
                 )
-                if green:
-                    plt.plot(
-                        R * np.sin(traffic_light_theta),
-                        R * np.cos(traffic_light_theta),
-                        "o",
-                        mec="g",
-                        mfc="None",
-                        markersize=10,
-                        label="Traffic light",
-                    )
-                else:
-                    plt.plot(
-                        R * np.sin(traffic_light_theta),
-                        R * np.cos(traffic_light_theta),
-                        "o",
-                        mec="r",
-                        mfc="None",
-                        markersize=10,
-                        label="Traffic light",
-                    )
-                plt.scatter(
-                    R * np.sin(bus_stop_theta),
-                    R * np.cos(bus_stop_theta),
-                    np.square(bus_stop_queue),
-                    marker="o",
-                    facecolors="none",
-                    edgecolors="b",
-                    label="Bus stop",
-                )
-                plt.plot(
-                    R * np.sin(theta[car]), R * np.cos(theta[car]), "ko", label="Car",
-                )
-                plt.scatter(
-                    R * np.sin(theta[bus]),
-                    R * np.cos(theta[bus]),
-                    np.square(p.bus_max_capacity) / bus_stop_scaling,
-                    marker="o",
-                    facecolors="none",
-                    edgecolors="b",
-                    label="Bus",
-                )
-                plt.scatter(
-                    R * np.sin(theta[bus]),
-                    R * np.cos(theta[bus]),
-                    np.square(np.sum(bus_fullness, axis=1)) / bus_stop_scaling,
-                    marker="o",
-                    facecolors="b",
-                    edgecolors="none",
-                    # label="Bus",
-                )
-                plt.xlim(-1.2 * R, 1.2 * R)
-                plt.ylim(-1.2 * R, 1.2 * R)
-                plt.axis("equal")
-                plt.legend(loc=0, fancybox=True)
-                plt.pause(1e-6)
         t += p.dt
 
     mean_velocity = np.mean(total_displacement / t)
@@ -208,32 +153,27 @@ def time_march(p, verbose, GRAPH):
     # print(f'Optimal scheduling velocity is: {np.mean(total_displacement/t)}')
 
 
-verbose = False
-
-GRAPH = True
-# GRAPH = False
-
-
 class params:
     def __init__(self):
         # The road is a single round loop of radius R
         self.L = 1000  # circumference of circle (m)
         # Time marching
-        self.t_max = 1e4  # maximum time (s)
-        self.dt = 1e-2  # time increment (s)
+        self.t_max = 1e3  # maximum time (s)
+        self.dt = 1e-1  # time increment (s)
         # Traffic properties
         self.initial_vehicle_spacing = 100  # (m/vehicle)
         self.speed_limit = 60 / 3.6  # maximum velocity (m/s)
         self.free_flowing_acceleration = 3  # typical vehicle acceleration (m/s^2)
         # Bus system
-        self.bus_fraction = 0.1
+        self.bus_fraction = 0.1  # what fraction of vehicles are busses (-)
         self.passenger_accumulation_rate = 0.1  # passengers arriving at a stop every second (passengers/s)
         self.passenger_ingress_egress_rate = 1  # how long to get on/off the bus (passengers/s)
-        self.bus_max_capacity = 50  # maximum number of passengers on an individual bus
+        self.bus_max_capacity = 50  # maximum number of passengers on an individual bus (passengers/vehicle)
+        self.bus_stop_traffic_light_offset = 0.5  # 0.1ish for just after the traffic lights, 0.9ish for just before traffic lights, 0.5 for in between (-)
         # Traffic light properties
         self.traffic_light_spacing = self.L / 4.0  # (m)
         self.traffic_light_period = 60  # (s)
-        self.traffic_light_green_fraction = 0.5  # fraction of time it is _green_
+        self.traffic_light_green_fraction = 0.5  # fraction of time it is _green_ (-)
         # Vehicle interaction properties
         self.stiffness = 1e4  # how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
         self.sigma = 10  # typical stopping distance (m)
@@ -243,16 +183,29 @@ class params:
         self.ptips_capacity_threshold = 0.8  # how full should the busses be before ptips kicks in (-)
 
 
-p = params()
-# vehicle_spacings = np.logspace(1.2,3,21)
-# vel = []
-# for initial_vehicle_spacing in vehicle_spacings:
-position, mean_velocity = time_march(p, verbose, GRAPH)
+verbose = False
 
-# flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
-#
-# plt.clf()
-# plt.plot(vehicle_spacings ** -1 * 1000, flow_rate)
-# plt.xlabel("Density (vehicles/km)")
-# plt.ylabel("Flow rate (vehicles/hour)")
-# plt.show()
+GRAPH = True
+# GRAPH = False
+
+# single case
+# p = params()
+# position, mean_velocity = time_march(p, verbose, GRAPH)
+
+# parameter study
+p = params()
+vehicle_spacings = np.logspace(1.2, 3, 21)
+vel = []
+for i in vehicle_spacings:
+    p.bus_fraction = 0
+    p.initial_vehicle_spacing = i
+    position, mean_velocity = time_march(p, False, False)
+    vel.append(mean_velocity)
+
+flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
+
+plt.clf()
+plt.plot(vehicle_spacings ** -1 * 1000, flow_rate)
+plt.xlabel("Density (vehicles/km)")
+plt.ylabel("Flow rate (vehicles/hour)")
+plt.show()
