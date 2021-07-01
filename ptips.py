@@ -29,7 +29,7 @@ def time_march(p, verbose, GRAPH):
     velocity = np.zeros_like(position)
 
     traffic_lights = np.linspace(0, p.L, num_traffic_lights, endpoint=False)
-    traffic_light_phasing = np.linspace(0,2*np.pi,num_traffic_lights,endpoint=False)
+    traffic_light_phasing = np.linspace(0, 2 * np.pi, num_traffic_lights, endpoint=False)
 
     bus_stop_locations = traffic_lights.copy() + p.bus_stop_traffic_light_offset * (
         traffic_lights[1] - traffic_lights[0]
@@ -58,12 +58,15 @@ def time_march(p, verbose, GRAPH):
 
         # Check traffic lights
         # if t % p.traffic_light_period < p.traffic_light_green_fraction * p.traffic_light_period:
-            # green = True
+        # green = True
         # else:
-            # green = False
-        green = 0.5*(np.cos(2*np.pi*t/p.traffic_light_period + traffic_light_phasing) + 1) < p.traffic_light_green_fraction
+        # green = False
+        green = (
+            0.5 * (np.cos(2 * np.pi * t / p.traffic_light_period + traffic_light_phasing) + 1)
+            < p.traffic_light_green_fraction
+        )
 
-        for i,light in enumerate(traffic_lights):
+        for i, light in enumerate(traffic_lights):
             if not green[i]:
                 distance_to_light = light - position
                 distance_to_light[position > light] += p.L  # account for periodicity
@@ -178,7 +181,7 @@ class params:
         self.traffic_light_spacing = self.L / 4.0  # (m)
         self.traffic_light_period = 60  # (s)
         self.traffic_light_green_fraction = 0.5  # fraction of time it is _green_ (-)
-        self.car_entry_exit_rate = 0.5 #
+        self.car_entry_exit_rate = 0.5  #
         # Vehicle interaction properties
         self.stiffness = 1e4  # how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
         self.sigma = 10  # typical stopping distance (m)
