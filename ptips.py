@@ -60,7 +60,7 @@ def time_march(p, verbose, GRAPH):
         if not green:
             for light in traffic_lights:
                 distance_to_light = light - position
-                distance_to_light[position>light] += p.L # account for periodicity
+                distance_to_light[position > light] += p.L  # account for periodicity
                 stopping_vehicles = (distance_to_light < 3 * p.sigma) * (distance_to_light > 0)
                 acceleration[stopping_vehicles] -= (
                     10 * p.stiffness * gaussian(distance_to_light[stopping_vehicles], p.sigma)
@@ -77,9 +77,13 @@ def time_march(p, verbose, GRAPH):
                 else:
                     distance_to_stop = stop - position[b]
                 if distance_to_stop < 3 * p.sigma and distance_to_stop > 0:
-                    if ((bus_stop_queue[i] > 1 and np.sum(bus_fullness[j,:])<p.bus_max_capacity) or bus_fullness[j, i] > 1) and bus_motion[
-                        j
-                    ] == 0:  # bus is moving and hits a stop with at least one person or one person wants to get off
+                    if (
+                        (
+                            (bus_stop_queue[i] > 1 and np.sum(bus_fullness[j, :]) < p.bus_max_capacity)
+                            or bus_fullness[j, i] > 1
+                        )
+                        and bus_motion[j] == 0
+                    ):  # bus is moving and hits a stop with at least one person or one person wants to get off
                         bus_motion[j] = 1  # move to unloading phase
                     if bus_motion[j] > 0:
                         acceleration[b] -= p.stiffness * gaussian(distance_to_stop, p.sigma)
@@ -108,7 +112,9 @@ def time_march(p, verbose, GRAPH):
                                 )  # passengers leave stop
                             else:
                                 bus_motion[j] = 0  # start moving again
-            bus_fullness[bus_fullness < 0] = 0  # HACK!!! real issue is not checking if we are going to over-empty the bus in a given timestep, but this is way too small an issue to bother fixing
+            bus_fullness[
+                bus_fullness < 0
+            ] = 0  # HACK!!! real issue is not checking if we are going to over-empty the bus in a given timestep, but this is way too small an issue to bother fixing
 
         # Update positions
         velocity += acceleration * p.dt
@@ -174,7 +180,7 @@ def time_march(p, verbose, GRAPH):
                 plt.scatter(
                     R * np.sin(theta[bus]),
                     R * np.cos(theta[bus]),
-                    np.square(p.bus_max_capacity)/bus_stop_scaling,
+                    np.square(p.bus_max_capacity) / bus_stop_scaling,
                     marker="o",
                     facecolors="none",
                     edgecolors="b",
@@ -183,7 +189,7 @@ def time_march(p, verbose, GRAPH):
                 plt.scatter(
                     R * np.sin(theta[bus]),
                     R * np.cos(theta[bus]),
-                    np.square(np.sum(bus_fullness, axis=1))/bus_stop_scaling,
+                    np.square(np.sum(bus_fullness, axis=1)) / bus_stop_scaling,
                     marker="o",
                     facecolors="b",
                     edgecolors="none",
