@@ -28,7 +28,6 @@ def time_march(p, verbose, GRAPH):
     total_displacement = np.zeros_like(position)
     velocity = np.zeros_like(position)
     traffic_lights = np.linspace(0, p.L, num_traffic_lights, endpoint=False)
-    traffic_lights += traffic_lights[1]  # don't start at 0
     bus_stop_locations = traffic_lights.copy() + (traffic_lights[1] - traffic_lights[0]) / 2.0
     bus_stop_queue = np.zeros_like(bus_stop_locations)  # no passengers anywhere
     bus = np.random.choice(num_vehicles, int(p.bus_fraction * num_vehicles), replace=False)
@@ -61,7 +60,7 @@ def time_march(p, verbose, GRAPH):
         if not green:
             for light in traffic_lights:
                 distance_to_light = light - position
-                # distance_to_light[distance_to_light > L/2] = L - distance_to_light[distance_to_light > L/2] # account for periodicity
+                distance_to_light[position>light] += p.L # account for periodicity
                 stopping_vehicles = (distance_to_light < 3 * p.sigma) * (distance_to_light > 0)
                 acceleration[stopping_vehicles] -= (
                     10 * p.stiffness * gaussian(distance_to_light[stopping_vehicles], p.sigma)
@@ -71,15 +70,14 @@ def time_march(p, verbose, GRAPH):
         bus_stop_queue += p.passenger_accumulation_rate * p.dt
 
         # Check bus stops
-        for i, stop in enumerate(bus_stop_locations):
-            for j, b in enumerate(bus):
-                distance_to_stop = stop - position[b]
-                # if distance_to_stop > p.L / 2:
-                # distance_to_stop = (
-                # p.L - distance_to_stop
-                # )  # account for periodicity - NOTE: THIS PROBABLY ISN'T WORKING
+        for j, b in enumerate(bus):
+            for i, stop in enumerate(bus_stop_locations):
+                if position[b] > stop:
+                    distance_to_stop = stop - position[b] + p.L
+                else:
+                    distance_to_stop = stop - position[b]
                 if distance_to_stop < 3 * p.sigma and distance_to_stop > 0:
-                    if (bus_stop_queue[i] > 1 or bus_fullness[j, i] > 1) and bus_motion[
+                    if ((bus_stop_queue[i] > 1 and np.sum(bus_fullness[j,:])<p.bus_max_capacity) or bus_fullness[j, i] > 1) and bus_motion[
                         j
                     ] == 0:  # bus is moving and hits a stop with at least one person or one person wants to get off
                         bus_motion[j] = 1  # move to unloading phase
@@ -110,7 +108,7 @@ def time_march(p, verbose, GRAPH):
                                 )  # passengers leave stop
                             else:
                                 bus_motion[j] = 0  # start moving again
-            bus_fullness[bus_fullness < 0] = 0  # HACK!!!
+            bus_fullness[bus_fullness < 0] = 0  # HACK!!! real issue is not checking if we are going to over-empty the bus in a given timestep, but this is way too small an issue to bother fixing
 
         # Update positions
         velocity += acceleration * p.dt
@@ -118,11 +116,6 @@ def time_march(p, verbose, GRAPH):
         position += velocity * p.dt
         total_displacement += velocity * p.dt
         position[position > p.L] -= p.L
-
-        theta = position / p.L * 2 * np.pi
-        traffic_light_theta = traffic_lights / p.L * 2 * np.pi
-        bus_stop_theta = bus_stop_locations / p.L * 2 * np.pi
-
         # delay = p.scheduled_velocity * t - total_displacement
 
         if verbose:
@@ -132,6 +125,11 @@ def time_march(p, verbose, GRAPH):
             print("")
         if GRAPH:
             if tstep % 1e2 == 0:
+                theta = position / p.L * 2 * np.pi
+                traffic_light_theta = traffic_lights / p.L * 2 * np.pi
+                bus_stop_theta = bus_stop_locations / p.L * 2 * np.pi
+                bus_stop_scaling = 5
+
                 plt.ion()
                 plt.clf()
                 plt.suptitle(t)
@@ -164,7 +162,7 @@ def time_march(p, verbose, GRAPH):
                 plt.scatter(
                     R * np.sin(bus_stop_theta),
                     R * np.cos(bus_stop_theta),
-                    3 + 10 * bus_stop_queue,
+                    np.square(bus_stop_queue),
                     marker="o",
                     facecolors="none",
                     edgecolors="b",
@@ -176,10 +174,20 @@ def time_march(p, verbose, GRAPH):
                 plt.scatter(
                     R * np.sin(theta[bus]),
                     R * np.cos(theta[bus]),
-                    3 + np.sum(bus_fullness, axis=1) * 10,
+                    np.square(p.bus_max_capacity)/bus_stop_scaling,
                     marker="o",
-                    c="b",
+                    facecolors="none",
+                    edgecolors="b",
                     label="Bus",
+                )
+                plt.scatter(
+                    R * np.sin(theta[bus]),
+                    R * np.cos(theta[bus]),
+                    np.square(np.sum(bus_fullness, axis=1))/bus_stop_scaling,
+                    marker="o",
+                    facecolors="b",
+                    edgecolors="none",
+                    # label="Bus",
                 )
                 plt.xlim(-1.2 * R, 1.2 * R)
                 plt.ylim(-1.2 * R, 1.2 * R)
@@ -212,10 +220,10 @@ class params:
         self.speed_limit = 60 / 3.6  # maximum velocity (m/s)
         self.free_flowing_acceleration = 3  # typical vehicle acceleration (m/s^2)
         # Bus system
-        self.bus_fraction = 0.3
+        self.bus_fraction = 0.1
         self.passenger_accumulation_rate = 0.1  # passengers arriving at a stop every second (passengers/s)
-        self.passenger_ingress_egress_rate = 10  # how long to get on/off the bus (passengers/s)
-        self.bus_max_capacity = 10  # maximum number of passengers on an individual bus
+        self.passenger_ingress_egress_rate = 1  # how long to get on/off the bus (passengers/s)
+        self.bus_max_capacity = 50  # maximum number of passengers on an individual bus
         # Traffic light properties
         self.traffic_light_spacing = self.L / 4.0  # (m)
         self.traffic_light_period = 60  # (s)
