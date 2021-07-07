@@ -108,10 +108,10 @@ def time_march(p, verbose, GRAPH):
                         if j not in bus:  # just cars
                             if np.random.rand() < p.car_entry_exit_probability:
                                 choices = np.nonzero(~green)[0]
-                                if len(choices) == 1:
-                                    red_light = choices[0]
-                                else:
-                                    red_light = np.random.choice(choices, 1)[0]
+                                # if len(choices) == 1:
+                                    # red_light = choices[0]
+                                # else:
+                                red_light = np.random.choice(choices, 1)[0]
                                 if verbose:
                                     print(f"all red lights: {choices}")
                                     print(f"{len(choices)}")
@@ -181,25 +181,41 @@ def time_march(p, verbose, GRAPH):
 
         # Lane changing
         for lane in range(
-            p.lanes - 1
-        ):  # SKIP LAST LANE - JUST LOOKING AT THEM PAIRWISE (one fewer pair than lanes)
-            pair_distances = cdist(
-                vehicle_position[lane].reshape(len(vehicle_position[lane]), -1),
-                vehicle_position[lane + 1].reshape(len(vehicle_position[lane + 1]), -1),
-            )
-            # print(pair_distances)
+            p.lanes
+        ):
+            # distance to all cars in lane to the left
+            if lane == 0:
+                left_distances = np.zeros_like(vehicle_position[lane]) # can't go into this imaginary lane
+            else:
+                left_distances = cdist(
+                    vehicle_position[lane].reshape(len(vehicle_position[lane]), -1),
+                    vehicle_position[lane - 1].reshape(len(vehicle_position[lane - 1]), -1),
+                )
+            if lane == p.lanes-1:
+                right_distances = np.zeros_like(vehicle_position[lane]) # can't go into this imaginary lane
+            else:
+                right_distances = cdist(
+                    vehicle_position[lane].reshape(len(vehicle_position[lane]), -1),
+                    vehicle_position[lane + 1].reshape(len(vehicle_position[lane + 1]), -1),
+                )
+
             deleted = []  # keep track of vehicles deleted in this lane
             for i in range(len(vehicle_position[lane])):
+                moves = [] # currently cant move anywhere
                 if i not in bus:
-                    if np.all(pair_distances[i] > p.sigma):
-                        print(lane, i)  # ,vehicle_position[lane+1].shape,vehicle_position[lane].shape)
-                        vehicle_position[lane + 1] = np.append(
-                            vehicle_position[lane + 1], vehicle_position[lane][i]
+                    if np.all(left_distances[i] > 2*p.sigma): moves.append(-1)
+                    if np.all(right_distances[i] > 2*p.sigma): moves.append(1)
+                    # if not accelerating
+                    if (acceleration[lane][i] < 0 ) and (len(moves) > 0):
+                        direction = np.random.choice(moves, 1)[0]
+                        # print(lane, i)  # ,vehicle_position[lane+1].shape,vehicle_position[lane].shape)
+                        vehicle_position[lane + direction] = np.append(
+                            vehicle_position[lane + direction], vehicle_position[lane][i]
                         )
-                        velocity[lane + 1] = np.append(velocity[lane + 1], velocity[lane][i])
-                        acceleration[lane + 1] = np.append(acceleration[lane + 1], acceleration[lane][i])
-                        total_displacement[lane + 1] = np.append(
-                            total_displacement[lane + 1], total_displacement[lane][i]
+                        velocity[lane + direction] = np.append(velocity[lane + direction], velocity[lane][i])
+                        acceleration[lane + direction] = np.append(acceleration[lane + direction], acceleration[lane][i])
+                        total_displacement[lane + direction] = np.append(
+                            total_displacement[lane + direction], total_displacement[lane][i]
                         )
                         deleted.insert(0, i)  # add to start of list
             for i in deleted:
