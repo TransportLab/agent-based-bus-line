@@ -256,9 +256,12 @@ def time_march(p, verbose, GRAPH):
                 )
         t += p.dt
 
-    mean_velocity = []
+    total = 0
+    N = 0
     for lane in range(p.lanes):
-        mean_velocity.append(np.mean(total_displacement[lane] / t))
+        total += np.sum(total_displacement[lane])
+        N += len(total_displacement[lane])
+    mean_velocity = total/N
     return vehicle_position, mean_velocity
 
 
@@ -295,27 +298,31 @@ class params:
 
 
 if __name__ == "__main__":
-    # single case
-    p = params()
-    vehicle_position, mean_velocity = time_march(p, verbose=False, GRAPH=True)
+    param_study = False
 
-    # parameter study
-    # import matplotlib.pyplot as plt
-    # p = params()
-    # vehicle_spacings = np.logspace(1.2, 3, 21)
-    # car_entry_exit_probability = np.logspace(-3, -1, 5)
-    #
-    # for i in tqdm(car_entry_exit_probability):
-    #     vel = []
-    #     for j in vehicle_spacings:
-    #         p.car_entry_exit_probability = i
-    #         p.initial_vehicle_spacing = j
-    #         vehicle_position, mean_velocity = time_march(p, verbose=False, GRAPH=False)
-    #         vel.append(mean_velocity)
-    #     flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
-    #     plt.plot(vehicle_spacings ** -1 * 1000, flow_rate, label=f"bus fraction {i}")
-    #
-    # plt.xlabel("Density (vehicles/km)")
-    # plt.ylabel("Flow rate (vehicles/hour)")
-    # plt.legend(loc=0)
-    # plt.savefig(f"fundamental_diagram_{p.car_entry_exit_probability}.png")
+    if not param_study:
+        # single case
+        p = params()
+        vehicle_position, mean_velocity = time_march(p, verbose=False, GRAPH=True)
+    else:
+        # parameter study
+        import matplotlib.pyplot as plt
+        p = params()
+        vehicle_spacings = np.logspace(1.2, 3, 21)
+        # car_entry_exit_probability = np.logspace(-3, -1, 5)
+        car_entry_exit_probability = [0.0]
+
+        for i in tqdm(car_entry_exit_probability):
+            vel = []
+            for j in vehicle_spacings:
+                p.car_entry_exit_probability = i
+                p.initial_vehicle_spacing = j
+                vehicle_position, mean_velocity = time_march(p, verbose=False, GRAPH=False)
+                vel.append(mean_velocity)
+            flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
+            plt.plot(vehicle_spacings ** -1 * 1000, flow_rate, label=f"bus fraction {i}")
+
+        plt.xlabel("Density (vehicles/km)")
+        plt.ylabel("Flow rate (vehicles/hour)")
+        plt.legend(loc=0)
+        plt.savefig(f"fundamental_diagram_{p.car_entry_exit_probability}.png")
