@@ -7,13 +7,13 @@ def show_road_system(
 ):
     plt.ion()
     plt.clf()
-    plt.suptitle(f't={t:.3f}s')
+    plt.suptitle(f"t={t:.3f}s")
     lanewidth = 10
     for lane in range(p.lanes):
         R = lane * lanewidth + p.L / (2 * np.pi)  # circumference (m)
         theta = position[lane] / p.L * 2 * np.pi
         traffic_light_theta = traffic_lights / p.L * 2 * np.pi
-        bus_stop_theta = (bus_stop_locations - 1.5*p.sigma) / p.L * 2 * np.pi
+        bus_stop_theta = (bus_stop_locations - 1.5 * p.sigma) / p.L * 2 * np.pi
         bus_stop_scaling = 5
 
         if lane == 0:
