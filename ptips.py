@@ -266,7 +266,7 @@ def time_march(p, verbose, GRAPH):
         total += np.sum(total_displacement[lane])
         N += len(total_displacement[lane])
     mean_velocity = total / N
-    return vehicle_position, mean_velocity, bus_fullness.sum()/len(bus)
+    return vehicle_position, mean_velocity, bus_fullness.sum() / len(bus)
 
 
 class params:
@@ -304,7 +304,12 @@ class params:
 
         # PTIPS stuff
         self.scheduled_velocity = 0.6 * self.speed_limit  # how fast the busses are scheduled to move (m/s)
-        self.theoretical_bus_fullness = self.passenger_accumulation_rate*self.traffic_light_spacing*(self.num_traffic_lights**2)/self.scheduled_velocity
+        self.theoretical_bus_fullness = (
+            self.passenger_accumulation_rate
+            * self.traffic_light_spacing
+            * (self.num_traffic_lights ** 2)
+            / self.scheduled_velocity
+        )
         self.ptips_delay_time = 10  # how much delay before PTIPS kicks in (s)
         self.ptips_capacity_threshold = 0.8  # how full should the busses be before ptips kicks in (-)
 
@@ -323,11 +328,11 @@ if __name__ == "__main__":
 
         p = params()
         vehicle_spacings = np.logspace(1.2, 3, 11)
-        bus_max_capacity = np.logspace(-0.3,3, 5)
+        bus_max_capacity = np.logspace(-0.3, 3, 5)
         # car_entry_exit_probability = np.logspace(-3, -1, 5)
         # car_entry_exit_probability = [0.0]
 
-        fig, ax = plt.subplots(nrows=1,ncols=2)
+        fig, ax = plt.subplots(nrows=1, ncols=2)
 
         # for i in tqdm(car_entry_exit_probability):
         for i in tqdm(bus_max_capacity):
@@ -350,6 +355,6 @@ if __name__ == "__main__":
         plt.legend(loc=0)
 
         ax[1].set_xlabel("Flow rate (vehicles/hour)")
-        ax[1].set_ylabel('Bus fullness (passengers/bus)')
+        ax[1].set_ylabel("Bus fullness (passengers/bus)")
 
-        plt.savefig(f"fundamental_diagram_{p.car_entry_exit_probability}.png",dpi=200)
+        plt.savefig(f"fundamental_diagram_{p.car_entry_exit_probability}.png", dpi=200)
