@@ -4,10 +4,17 @@ Questions to ask of model:
 
 """
 
+import sys
+import json5
 import numpy as np
 from tqdm import tqdm
 from scipy.spatial.distance import cdist
 from plotting import show_road_system
+
+class dict_to_class(dict):
+    def __init__(self, dict):
+        for key in dict:
+            setattr(self, key, dict[key])
 
 
 def update_order(p, vehicle_position):
@@ -23,7 +30,7 @@ def gaussian(d, sigma):
     return np.exp(-(d ** 2) / 2 / sigma ** 2) / (np.sqrt(2 * np.pi) * sigma)
 
 
-def time_march(p, verbose, GRAPH):
+def time_march(p):
     # Initialise system
     t = 0  # current time (s)
     tstep = 0  # time step (-)
@@ -66,8 +73,15 @@ def time_march(p, verbose, GRAPH):
     vehicle_order, vehicle_order_order = update_order(p, vehicle_position)
     update_order_flag = False
 
-    # print(f'Theoretical bus fullness: {p.theoretical_bus_fullness}. Bus max capacity: {p.bus_max_capacity}')
-    # print('\n' + str(len(bus)) + '\n')
+    if p.verbose:
+        theoretical_bus_fullness = (
+            p.passenger_accumulation_rate
+            * p.traffic_light_spacing
+            * (p.num_traffic_lights ** 2)
+            / p.scheduled_velocity
+        )
+        print(f'Theoretical bus fullness: {theoretical_bus_fullness}. Bus max capacity: {p.bus_max_capacity}')
+        print('\n' + str(len(bus)) + '\n')
 
     for tstep in tqdm(range(nt), leave=False):
         # if tstep%1000 == 0: print(bus_fullness.sum())
@@ -116,7 +130,7 @@ def time_march(p, verbose, GRAPH):
                                 # red_light = choices[0]
                                 # else:
                                 red_light = np.random.choice(choices, 1)[0]
-                                if verbose:
+                                if p.verbose:
                                     print(f"all red lights: {choices}")
                                     print(f"{len(choices)}")
                                     print(f"chose {red_light}")
@@ -240,12 +254,12 @@ def time_march(p, verbose, GRAPH):
             vehicle_position[lane][vehicle_position[lane] > p.L] -= p.L
         # delay = p.scheduled_velocity * t - total_displacement
 
-        if verbose:
+        if p.verbose:
             print(bus_motion)
             print(bus_stop_queue)
             print(bus_fullness)
             print("")
-        if GRAPH:
+        if p.GRAPH:
             if tstep % 1e2 == 0:
                 show_road_system(
                     p,
@@ -268,83 +282,29 @@ def time_march(p, verbose, GRAPH):
     mean_velocity = total / N
     return vehicle_position, mean_velocity, bus_fullness.sum() / len(bus)
 
-
-class params:
-    def __init__(self):
-        # The road is a single round loop of radius R
-        self.L = 1000  # circumference of circle (m)
-
-        # Time marching
-        self.t_max = 1e3  # maximum time (s)
-        self.dt = 1e-1  # time increment (s)
-
-        # Traffic properties
-        self.initial_vehicle_spacing = 100  # (m/vehicle)
-        self.speed_limit = 60 / 3.6  # maximum velocity (m/s)
-        self.free_flowing_acceleration = 3  # typical vehicle acceleration (m/s^2)
-        self.lanes = 2  # how many lanes
-
-        # Bus system
-        self.bus_fraction = 0.1  # what fraction of vehicles are busses (-)
-        self.passenger_accumulation_rate = 0.1  # passengers arriving at a stop every second (passengers/s)
-        self.passenger_ingress_egress_rate = 1  # how long to get on/off the bus (passengers/s)
-        self.bus_max_capacity = 50  # maximum number of passengers on an individual bus (passengers/vehicle)
-        self.bus_stop_traffic_light_offset = 0.5  # 0.1ish for just after the traffic lights, 0.9ish for just before traffic lights, 0.5 for in between (-)
-
-        # Traffic light properties
-        self.traffic_light_spacing = self.L / 4.0  # (m)
-        self.num_traffic_lights = int(self.L // self.traffic_light_spacing)
-        self.traffic_light_period = 60  # (s)
-        self.traffic_light_green_fraction = 0.5  # fraction of time it is _green_ (-)
-        self.car_entry_exit_probability = 0.1  # probability of moving to a different traffic light
-
-        # Vehicle interaction properties
-        self.stiffness = 1e4  # how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
-        self.sigma = 10  # typical stopping distance (m)
-
-        # PTIPS stuff
-        self.scheduled_velocity = 0.6 * self.speed_limit  # how fast the busses are scheduled to move (m/s)
-        self.theoretical_bus_fullness = (
-            self.passenger_accumulation_rate
-            * self.traffic_light_spacing
-            * (self.num_traffic_lights ** 2)
-            / self.scheduled_velocity
-        )
-        self.ptips_delay_time = 10  # how much delay before PTIPS kicks in (s)
-        self.ptips_capacity_threshold = 0.8  # how full should the busses be before ptips kicks in (-)
-
-
 if __name__ == "__main__":
-    param_study = True
-    # param_study = False
+    with open(sys.argv[1], 'r') as params:
+        # parse file
+        dict = json5.loads(params.read())
+        p_init = dict_to_class(dict)
+        p_curr = dict_to_class(dict)
 
-    if not param_study:
-        # single case
-        p = params()
-        vehicle_position, mean_velocity = time_march(p, verbose=False, GRAPH=True)
-    else:
-        # parameter study
         import matplotlib.pyplot as plt
-
-        p = params()
-        vehicle_spacings = np.logspace(1.2, 3, 11)
-        bus_max_capacity = np.logspace(-0.3, 3, 5)
-        # car_entry_exit_probability = np.logspace(-3, -1, 5)
-        # car_entry_exit_probability = [0.0]
 
         fig, ax = plt.subplots(nrows=1, ncols=2)
 
         # for i in tqdm(car_entry_exit_probability):
-        for i in tqdm(bus_max_capacity):
+        for i in tqdm(p_init.bus_max_capacity):
             vel = []
             bus_fullness = []
-            for j in tqdm(vehicle_spacings, leave=False):
+            for j in tqdm(p_init.initial_vehicle_spacing, leave=False):
                 # p.car_entry_exit_probability = i
-                p.bus_max_capacity = i
-                p.initial_vehicle_spacing = j
-                vehicle_position, mean_velocity, b = time_march(p, verbose=False, GRAPH=False)
+                p_curr.bus_max_capacity = i
+                p_curr.initial_vehicle_spacing = j
+                vehicle_position, mean_velocity, b = time_march(p_curr)#, verbose=False, GRAPH=False)
                 vel.append(mean_velocity)
                 bus_fullness.append(b)
+            
             flow_rate = vehicle_spacings ** -1 * vel * 3600  # vehicles/hr = vehicles/m * m/s * s/hr
             ax[0].plot(vehicle_spacings ** -1 * 1000, flow_rate, label=f"bus capacity {i}")
             ax[1].plot(flow_rate, bus_fullness, label=f"bus capacity {i}")

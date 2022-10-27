@@ -16,7 +16,7 @@ A python package for simulating a multi-lane bus route using agent-based modelli
 3.  Bus passenger routing system. Passengers arrive at bus stops over time. When loaded onto a bus, passengers are routed towards stops uniformly (i.e. all stops have equal weighting).
 
 # Parameters
-All parameters are defined in the `params` class, with the following default values:
+All parameters are defined in a `json5` file. See `default.json` for some default values:
 
 ## Road system
 -   `L = 1000`  # circumference of circle (m)

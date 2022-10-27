@@ -1,5 +1,0 @@
-numpy
-matplotlib
-black
-flake8
-tqdm
