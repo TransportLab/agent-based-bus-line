@@ -1,0 +1,4 @@
+.DS_Store
+dist/
+__pycache__/
+agent_based_bus_line.egg-info/

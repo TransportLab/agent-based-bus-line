@@ -1,0 +1,44 @@
+{
+    // The road is a single round loop of radius R
+    "L" : 1000,  // circumference of circle (m)
+
+    // Time marching
+    "t_max" : 1e4,  // maximum time (s)
+    "dt" : 1e-1,  // time increment (s)
+
+    // Traffic properties
+    "initial_vehicle_spacing" : [  15.84893192,   23.98832919,   36.30780548,   54.95408739,
+    83.17637711,  125.89254118,  190.5460718 ,  288.40315031,
+   436.51583224,  660.69344801, 1000.0        ],  // (m/vehicle)
+    "speed_limit" : 16.6666666667,  // maximum velocity (m/s)
+    "free_flowing_acceleration" : 3,  // typical vehicle acceleration (m/s^2)
+    "lanes" : 2,  // how many lanes
+
+    // Bus system
+    "bus_fraction" : 0.1,  // what fraction of vehicles are busses (-)
+    "passenger_accumulation_rate" : 0.1,  // passengers arriving at a stop every second (passengers/s)
+    "passenger_ingress_egress_rate" : 1,  // how long to get on/off the bus (passengers/s)
+    "bus_max_capacity" : [5.01187234e-01, 3.34965439e+00, 2.23872114e+01, 1.49623566e+02,
+    1.00000000e+03],  // maximum number of passengers on an individual bus (passengers/vehicle)
+    "bus_stop_traffic_light_offset" : 0.5,  // 0.1ish for just after the traffic lights, 0.9ish for just before traffic lights, 0.5 for in between (-)
+
+    // Traffic light properties
+    "traffic_light_spacing" : 250,  // (m)
+    "num_traffic_lights" : 4,
+    "traffic_light_period" : 60,  // (s)
+    "traffic_light_green_fraction" : 0.5,  // fraction of time it is _green_ (-)
+    "car_entry_exit_probability" : 0.1,  // probability of moving to a different traffic light
+
+    // Vehicle interaction properties
+    "stiffness" : 1e4,  // how much cars repel each other (also used for traffic lights, which are the same as stopped cars)
+    "sigma" : 10,  // typical stopping distance (m)
+
+    // PTIPS stuff
+    "scheduled_velocity" : 36,  // how fast the busses are scheduled to move (m/s)
+    "ptips_delay_time" : 10,  // how much delay before PTIPS kicks in (s)
+    "ptips_capacity_threshold" : 0.8,  // how full should the busses be before ptips kicks in (-)
+
+    // verbosity
+    "verbose" : false,
+    "GRAPH" : false,
+}
