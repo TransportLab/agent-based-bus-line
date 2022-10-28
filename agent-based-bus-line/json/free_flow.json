@@ -3,11 +3,11 @@
     "L" : 1000,  // circumference of circle (m)
 
     // Time marching
-    "t_max" : 1e4,  // maximum time (s)
+    "t_max" : 1e2,  // maximum time (s)
     "dt" : 1e-2,  // time increment (s)
 
     // Traffic properties
-    "initial_vehicle_spacing" : [20],  // (m/vehicle)
+    "initial_vehicle_spacing" : [500],  // (m/vehicle)
     "speed_limit" : 16.6666666667,  // maximum velocity (m/s)
     "free_flowing_acceleration" : 3,  // typical vehicle acceleration (m/s^2)
     "lanes" : 2,  // how many lanes
@@ -20,9 +20,9 @@
     "bus_stop_traffic_light_offset" : 0.5,  // 0.1ish for just after the traffic lights, 0.9ish for just before traffic lights, 0.5 for in between (-)
 
     // Traffic light properties
-    "num_traffic_lights" : 4,
+    "num_traffic_lights" : 0,
     "traffic_light_period" : 60,  // (s)
-    "traffic_light_green_fraction" : 0.5,  // fraction of time it is _green_ (-)
+    "traffic_light_green_fraction" : 1,  // fraction of time it is _green_ (-)
     "car_entry_exit_probability" : 0.1,  // probability of moving to a different traffic light
 
     // Vehicle interaction properties

@@ -1,0 +1,10 @@
+# roughly 6 inches textwidth for transport findings
+figure.figsize : 6, 4 # in inches
+lines.linewidth : 1
+font.family : serif
+axes.titlesize : 10
+text.usetex : True
+mathtext.fontset : custom
+mathtext.rm : Bitstream Vera Sans
+mathtext.it : Bitstream Vera Sans:italic
+mathtext.bf : Bitstream Vera Sans:bold
